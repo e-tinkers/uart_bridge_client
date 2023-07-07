@@ -88,13 +88,8 @@ int8_t gpio_config(uint8_t gpio_pin, uint8_t gpio_mode) {
   mode = mode | pin_mask;
 
   uint8_t cmd[] = {
-    CMD_REG_WRITE,
-    REG_PORT_CONF1,
-    (uint8_t) (mode & 0x00ff),
-    REG_PORT_CONF2,
-    (uint8_t) (mode >> 8),
-    CMD_STOP,
-    '\n'
+    CMD_REG_WRITE, REG_PORT_CONF1, (uint8_t) (mode & 0x00ff),
+    REG_PORT_CONF2, (uint8_t) (mode >> 8), CMD_STOP
   };
   uart.write(cmd, sizeof(cmd));
   
@@ -107,7 +102,7 @@ int8_t gpio_config(uint8_t gpio_pin, uint8_t gpio_mode) {
 // return states of all GPIO pins, -1=invalid pin
 int8_t gpio_read_all() {
 
-  uint8_t cmd[] = { CMD_GPIO_READ, CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_GPIO_READ, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
   while (!uart.available());
@@ -136,7 +131,7 @@ int8_t gpio_write(uint8_t gpio_pin, uint8_t state) {
   
   uint8_t pin_states = gpio_read_all();
   
-  uint8_t cmd[] = {CMD_GPIO_WRITE, (uint8_t) (pin_states | (state << gpio_pin)), CMD_STOP, '\n'};
+  uint8_t cmd[] = {CMD_GPIO_WRITE, (uint8_t) (pin_states | (state << gpio_pin)), CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
   return 1;
@@ -148,17 +143,17 @@ int8_t gpio_write(uint8_t gpio_pin, uint8_t state) {
 // Sending any character via UART would wake-up the chip but the char will be ignored
 void power_down() {
 
-  uint8_t cmd[] = { CMD_POWER_DOWN, 0x5A, 0xA5, CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_POWER_DOWN, 0x5A, 0xA5, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
 }
 
 
 // Read Chip ID ('V' + 'P')
-// resp: "SC18IM704 1.0.1" (16-char NULL-terminated string)
+// resp: "SC18IM704 1.0.1\0" (16-char NULL-terminated string)
 void read_chip_id(char* resp) {
   
-  uint8_t cmd[] = { CMD_READ_ID, CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_READ_ID, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
   while (!uart.available()) { yield(); };
@@ -194,15 +189,7 @@ bool set_baud_rate(uint32_t baud_rate) {
     default: return false;
   }
 
-  uint8_t cmd[] = { 
-    CMD_REG_WRITE, 
-    REG_BAUD_RATE_0, 
-    setting_l, 
-    REG_BAUD_RATE_1, 
-    setting_h, 
-    CMD_STOP,
-    '\n'
-  };
+  uint8_t cmd[] = { CMD_REG_WRITE, REG_BAUD_RATE_0, setting_l, REG_BAUD_RATE_1, setting_h, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
   return true;
@@ -216,7 +203,7 @@ bool i2c_bus_address(uint8_t bus_addr) {
   
   if (bus_addr > 0x7f) return false;
   
-  uint8_t cmd[] = { CMD_REG_WRITE, REG_I2C_BUS_ADDR, (uint8_t)(bus_addr << 1), CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_REG_WRITE, REG_I2C_BUS_ADDR, (uint8_t)(bus_addr << 1), CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
   return true;
@@ -232,7 +219,7 @@ bool i2c_set_clock(uint32_t speed) {
 
   uint8_t clk = (speed == 100000L) ? I2C_CLCK_99KHZ : I2C_CLK_375KHZ;
 
-  uint8_t cmd[] = { CMD_REG_WRITE, REG_I2C_CLK_L, clk, REG_I2C_CLK_H, 0, CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_REG_WRITE, REG_I2C_CLK_L, clk, REG_I2C_CLK_H, 0, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
   return true;
@@ -244,11 +231,11 @@ void i2c_send(uint8_t address, uint8_t reg, bool send_stop) {
 
   uint8_t addr = (uint8_t) (address << 1);
   if (send_stop) {
-    uint8_t cmd[] = { CMD_START, addr, 1, reg, CMD_STOP, '\n' };
+    uint8_t cmd[] = { CMD_START, addr, 1, reg, CMD_STOP };
     uart.write(cmd, sizeof(cmd));
   }
   else {
-    uint8_t cmd[] = { CMD_START, addr, 1, reg, '\n' };
+    uint8_t cmd[] = { CMD_START, addr, 1, reg };
     uart.write(cmd, sizeof(cmd));
   }
 
@@ -259,7 +246,7 @@ void i2c_send(uint8_t address, uint8_t reg, bool send_stop) {
 void i2c_receive(uint8_t address, uint8_t * buf, uint8_t len) {
 
   uint8_t read = (uint8_t) ((address << 1) | 0x01);
-  uint8_t cmd[] = { CMD_START, read, len, CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_START, read, len, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
   while (uart.available() < len) {yield();};
@@ -282,7 +269,7 @@ void i2c_receive(uint8_t address, uint8_t * buf, uint8_t len) {
 // would means a timeout of 21ms for 400kHz, and 70ms for 100kHz.
 void i2c_set_timeout(uint8_t t) {
 
-  uint8_t cmd[] = { REG_I2C_TIMEOUT, t, CMD_STOP, '\n' };
+  uint8_t cmd[] = { REG_I2C_TIMEOUT, t, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
 }
@@ -291,7 +278,7 @@ void i2c_set_timeout(uint8_t t) {
 // Read i2c_status
 uint8_t i2c_status() {
   
-  uint8_t cmd[] = { CMD_REG_READ, REG_I2C_STATE, CMD_STOP, '\n' };
+  uint8_t cmd[] = { CMD_REG_READ, REG_I2C_STATE, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
   while (uart.available() < 1) {yield();};

@@ -57,12 +57,14 @@ void setup() {
   uart.begin(115200);       // SC18IM704 default at 9600, upon reset, it sends "OK"
   delay(200);
   
-  Serial.printf("\nPress RESET on UART-Bridge to start\n");
-  while (true) {
-    if(uart.available()) {
-      Serial.println(uart.readStringUntil('\n'));
-      break;
-    }
+  Serial.printf("\nPress RESET on UART-Bridge or plugin SC18IM704 to start\n");
+  String resp{0};
+  while (!uart.available()) { yield(); };
+  while(true) {
+    *resp = uart.read();
+    resp.trim();
+    if (*resp.equals("OK")) break;
+    resp++;
   }
 
   // I2C config
