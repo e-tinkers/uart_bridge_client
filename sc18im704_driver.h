@@ -10,12 +10,10 @@
  * date:      7 June, 2023
  */
 
-#if !defined(CHIP_PULPISSIMO)
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
 SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
-#endif
 
 // UART Commands
 #define CMD_START         'S' // 0x53
@@ -41,8 +39,7 @@ SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
 #define REG_I2C_STATE      10 // default I2C_OK, See I2C Status
 
 // GPIO Configuration
-#define IO_INPUT_LOW      0
-#define IO_INPUT_HIGH     1
+#define IO_INPUT          1
 #define IO_PUSH_PULL      2
 #define IO_OPEN_DRAIN     3
 
@@ -60,16 +57,6 @@ SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
 
 uint8_t rx_buf[BUF_SIZE]{0};
 
-inline void send_data(uint8_t * data, uint8_t len) {
-
-#if defined(CHIP_PULPISSIMO)
-  
-#else
-  uart.write(data, len);
-#endif
-
-}
-
 // GPIO Config
 // 'W' + REG_PORT_CONFIG1 + pin3-0 + REG_PORT_CONFIG2 + pin7-4 + 'P'
 // all gpio_pins are configure as INPUT by default, therefore there is no need to
@@ -79,17 +66,15 @@ int8_t gpio_config(uint8_t gpio_pin, uint8_t gpio_mode) {
   
   if ((gpio_pin > 7) || (gpio_mode > IO_OPEN_DRAIN)) return -1;
 
-  //TO_DO: instead of using default, should use the last_config value
-  uint16_t portConf = 0x5555;  // all pins as input by default
-  uint16_t target_pin = (uint16_t) gpio_pin;
-  uint16_t target_mode = (uint16_t) gpio_mode;  
-  uint16_t mode = target_mode << (target_pin * 2);
-  uint16_t pin_mask = portConf & (~mode);
-  mode = mode | pin_mask;
+  //TO_DO: instead of using default hardcoded 0x5555, should use the last_config value
+  uint16_t target_mode = gpio_mode << (gpio_pin * 2);
+  uint16_t mask = ~(0x03 << (gpio_pin * 2));
+  uint16_t bits_config = 0x5555 & mask;
+  uint16_t gpio_conf = bits_config | target_mode;
 
-  uint8_t cmd[] = {
-    CMD_REG_WRITE, REG_PORT_CONF1, (uint8_t) (mode & 0x00ff),
-    REG_PORT_CONF2, (uint8_t) (mode >> 8), CMD_STOP
+   uint8_t cmd[] = {
+    CMD_REG_WRITE, REG_PORT_CONF1, (uint8_t) (gpio_conf & 0x00ff),
+    REG_PORT_CONF2, (uint8_t) (gpio_conf >> 8), CMD_STOP
   };
   uart.write(cmd, sizeof(cmd));
   
@@ -100,15 +85,18 @@ int8_t gpio_config(uint8_t gpio_pin, uint8_t gpio_mode) {
 
 // GPIO Read All ('I' + 'P')
 // return states of all GPIO pins, -1=invalid pin
+// For SC18IM704, if the IO pin is set to IO_OPEN_DRAIN, it does not seem to read the correct states,
+// only when IO_OPEN_DRAIN, it reports the correct states
 int8_t gpio_read_all() {
 
   uint8_t cmd[] = { CMD_GPIO_READ, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
+  delay(100);
   
-  while (!uart.available());
-  
-  return uart.read();
-  
+  while (!uart.available()) {};
+  uart.read();
+  return (uint8_t) uart.read();
+
 }
 
 
@@ -130,8 +118,9 @@ int8_t gpio_write(uint8_t gpio_pin, uint8_t state) {
   if ((gpio_pin > 7) && (state > 1)) return -1;
   
   uint8_t pin_states = gpio_read_all();
+  uint8_t mask = ~(0xff & (state << gpio_pin));
   
-  uint8_t cmd[] = {CMD_GPIO_WRITE, (uint8_t) (pin_states | (state << gpio_pin)), CMD_STOP };
+  uint8_t cmd[] = {CMD_GPIO_WRITE, (uint8_t) (mask & pin_states), CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
   return 1;
@@ -151,18 +140,15 @@ void power_down() {
 
 // Read Chip ID ('V' + 'P')
 // resp: "SC18IM704 1.0.1\0" (16-char NULL-terminated string)
-void read_chip_id(char* resp) {
-  
+String read_chip_id() {
+
   uint8_t cmd[] = { CMD_READ_ID, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
   
   while (!uart.available()) { yield(); };
-  
-  while(true) {
-    *resp = uart.read();
-    if (*resp == '\0') break;
-    resp++;
-  }
+  String resp = uart.readStringUntil('\0');
+  uart.read();
+  return resp;
   
 }
 

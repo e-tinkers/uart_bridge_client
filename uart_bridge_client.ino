@@ -7,22 +7,21 @@
 
 #include <Arduino.h>
 #include "sc18im704_driver.h"
-#include "tiny_oled_driver.h"
+
+// Configuration
+#define USING_SC18IM704    1
+#define MCP9808_CONNECTED  0
+#define OLED_CONNECTED     0
 
 #define READ_INTERVAL  5000
-#define LED            0     // GPIO0 connect to a LED with a 1k resistor to GND
-#define BUTTON         1     // GPIO1 connect to a push button with a 1k resistor to GND
+
+#if MCP9808_CONNECTED
 
 // MCP9808 Temperature Sensor
 #define MCP9808_ADDR   0x18
 #define MCP_TEMP       0x05
 #define MCP_MFR_ID     0x06
 #define MCP_DEV_ID     0x07
-
-// OLED 128x32 display module
-#define OLED_ADDR      0x3C
-
-unsigned long start_time{0};
 
 void print_mcp_device_info() {
   // write to MCP9808 register MCP_MFR_ID, do not send stop
@@ -50,39 +49,44 @@ void print_mcp_temperature_reading() {
   }
   Serial.printf("Temperature: %.1f C\n", temp / 16.0);
 }
+#endif
 
+#if OLED_CONNECTED
+// OLED 128x32 display module
+#include "tiny_oled_driver.h"
+#define OLED_ADDR      0x3C
+#endif
+  
 void setup() {
 
   Serial.begin(115200);
-  uart.begin(115200);       // SC18IM704 default at 9600, upon reset, it sends "OK"
-  delay(200);
+//#if defined(USING_SC18IM704)
+  uart.begin(9600);
+//#else
+//  uart.begin(115200);       // SC18IM704 default at 9600, upon reset, it sends "OK"
+//#endif
+  delay(1000);
   
-  Serial.printf("\nPress RESET on UART-Bridge or plugin SC18IM704 to start\n");
-  String resp{0};
-  while (!uart.available()) { yield(); };
-  while(true) {
-    *resp = uart.read();
-    resp.trim();
-    if (*resp.equals("OK")) break;
-    resp++;
-  }
+  while(uart.available()) {uart.read();}
+  Serial.println(read_chip_id());
 
+  gpio_config(2, IO_PUSH_PULL);        // set GPIO pin 0 as OUTPUT Push-Pull
+  
   // I2C config
-  i2c_set_clock(400000L);              // change i2c clock from default 100kHz to 400kHz
+//  i2c_set_clock(100000L);              // change i2c clock from default 100kHz to 400kHz
 
-  start_time = millis();
 }
 
 void loop() {
 
-  if (millis() - start_time > READ_INTERVAL) {
+  gpio_write(2, 1);
+  delay(500);
+  gpio_write(2, 0);
+  delay(500);
+
+#if MCP9808_CONNECTED
     print_mcp_device_info();
-
     print_mcp_temperature_reading();
- 
-    start_time = millis();
-  }
-
-  yield();
+#endif
   
 }
