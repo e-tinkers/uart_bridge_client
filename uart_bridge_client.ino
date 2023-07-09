@@ -79,13 +79,13 @@ void setup() {
 //  i2c_set_clock(400000L);              // change i2c clock from default 100kHz to 400kHz
 
 #if USING_SC18IM704
-  // blinking SC18IM704 on-board i2c LEDs
-  uint8_t cmd[] = { 0x11, 0x97, 0x80, 0x00, 0x00, 0xAA };
-  i2c_write_array(ONBOARD_I2C_LED, cmd, sizeof(cmd), true);
+  // blinking SC18IM704 on-board i2c LEDs which are connected to the GPIO Pin 5-8
+  uint8_t data[] = { 0x11, 0x97, 0x80, 0x00, 0x00, 0xAA };
+  i2c_write_array(ONBOARD_I2C_LED, data, sizeof(data), true);
 #endif
  
-  // gpio_config(15, IO_PUSH_PULL);        // set GPIO pin 0 as OUTPUT Push-Pull
-  gpio_config_multiple(0x55AA);            // set GPIO pin 0 - 3 as OUPTUT Push_Pulll
+  // gpio_config(0, IO_PUSH_PULL);        // set only GPIO pin 0 as OUTPUT Push-Pull
+  gpio_config_multiple(0x55AA);            // set GPIO pin 0-3 as OUPTUT Push_Pulll
   
 }
 
@@ -100,8 +100,8 @@ void loop() {
   i = (i + 1) % 4;   // rotating between LED 0 to 3
 
 #if MCP9808_CONNECTED
-    print_mcp_device_info();
-    print_mcp_temperature_reading();
+  print_mcp_device_info();
+  print_mcp_temperature_reading();
 #endif
   
 }
