@@ -224,22 +224,16 @@ bool i2c_set_clock(uint32_t speed) {
 }
 
 // Send data over i2c
-void i2c_write(uint8_t address, uint8_t reg, bool send_stop) {
+void i2c_write(uint8_t address, uint8_t reg) {
 
   uint8_t addr = (uint8_t) (address << 1);
-  if (send_stop) {
-    uint8_t cmd[] = { CMD_START, addr, 1, reg, CMD_STOP };
-    uart.write(cmd, sizeof(cmd));
-  }
-  else {
-    uint8_t cmd[] = { CMD_START, addr, 1, reg };
-    uart.write(cmd, sizeof(cmd));
-  }
+  uint8_t cmd[] = { CMD_START, addr, 1, reg, CMD_STOP };
+  uart.write(cmd, sizeof(cmd));
 
 }
 
 // i2c write multiple operation
-void i2c_write_array(uint8_t address, uint8_t * data, uint8_t len, bool send_stop) {
+void i2c_write_array(uint8_t address, uint8_t * data, uint8_t len) {
 
   const int asize = len + 4;
   uint8_t cmd[asize]{0};
@@ -248,13 +242,8 @@ void i2c_write_array(uint8_t address, uint8_t * data, uint8_t len, bool send_sto
   cmd[1] = (uint8_t) (address << 1);
   cmd[2] = len;
   memcpy(&cmd[3], data, len);
-  if (send_stop) {
-    cmd[len+3] = CMD_STOP;
-    uart.write(cmd, len+4);
-  }
-  else {
-      uart.write(cmd, len+3);
-  }
+  cmd[len+3] = CMD_STOP;
+  uart.write(cmd, len+4);
 
 }
 
@@ -273,7 +262,7 @@ void i2c_read(uint8_t address, uint8_t * buf, uint8_t len) {
     rx_buf[i++] = uart.read();
   }
 
-  memcpy(buf, rx_buf, 2);
+  memcpy(buf, rx_buf, len);
   
 }
 

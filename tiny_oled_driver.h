@@ -53,7 +53,7 @@ uint16_t _stretch (uint8_t x) {
 
 void init_display(uint8_t addr) {
 
-  i2c_write_array(addr, init_config, OLED_INIT_LEN, true);
+  i2c_write_array(addr, init_config, OLED_INIT_LEN);
   
 }
 
@@ -61,14 +61,14 @@ void init_display(uint8_t addr) {
 void clear_display(uint8_t addr) {
   // Set column address range 0 - 127, page address range 0 - 3
   uint8_t params[] = {OLED_COMMAND_MODE, OLED_REG_SET_COL, 0, 127, OLED_REG_SET_PAGE, 0, 3};
-  i2c_write_array(addr, params, sizeof(params), true) ;
+  i2c_write_array(addr, params, sizeof(params)) ;
 
   // Write the data in 32 blocks of 16-byte as SSD1306 has an I2C buffer of 16-byte
   uint8_t data[16];  
   for (int i = 0 ; i < 32; i++) {
-    i2c_write(addr, OLED_DATA_MODE, false);
+    i2c_write(addr, OLED_DATA_MODE);
     memset(data, 0, 16);
-    i2c_write_array(addr, data, 16, true);
+    i2c_write_array(addr, data, 16);
   }
 }
 
@@ -76,7 +76,7 @@ void clear_display(uint8_t addr) {
 void display_on_off(uint8_t addr, uint8_t display_state) {
 
   uint8_t cmd[] = {OLED_COMMAND_MODE, display_state};
-  i2c_write_array(addr, cmd, sizeof(cmd), true);
+  i2c_write_array(addr, cmd, sizeof(cmd));
 
 }
 
@@ -88,8 +88,8 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
     OLED_REG_SET_COL, column, column + (scale * 6) -1, 
     OLED_REG_SET_PAGE, line, line + scale - 1
   };
-  i2c_write(addr, OLED_COMMAND_MODE, false);
-  i2c_write_array(addr, data, sizeof(data), true);
+  i2c_write(addr, OLED_COMMAND_MODE);
+  i2c_write_array(addr, data, sizeof(data));
   
   uint8_t col0 = fontTable[c - ' '][0];
   uint16_t col0L = _stretch(col0);
@@ -101,7 +101,7 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
     
     if (scale == 1) {
       uint8_t data[] = {OLED_DATA_MODE, col0};
-      i2c_write_array(addr, data, sizeof(data), true);
+      i2c_write_array(addr, data, sizeof(data));
     }
     else {
       // smooth a font
@@ -114,7 +114,7 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
         }
       }
       uint8_t data[] = { OLED_DATA_MODE, col0L & 0xFF, col0L >> 8, col0R & 0xFF, col0R >> 8 };
-      i2c_write_array(addr, data, sizeof(data), true);
+      i2c_write_array(addr, data, sizeof(data));
       col0L = col1L; 
       col0R = col1R;
     }
@@ -123,11 +123,11 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
   
   if (scale == 1) {
     uint8_t data[] = {OLED_DATA_MODE, col0};
-    i2c_write_array(addr, data, sizeof(data), true);
+    i2c_write_array(addr, data, sizeof(data));
   }
   else {
     uint8_t data[] = { OLED_DATA_MODE, col0L & 0xFF, col0L >> 8, col0R & 0xFF, col0R >> 8 };
-    i2c_write_array(addr, data, sizeof(data), true);
+    i2c_write_array(addr, data, sizeof(data));
   }
 
 }
