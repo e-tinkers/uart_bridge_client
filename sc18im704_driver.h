@@ -15,6 +15,7 @@
 
 SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
 
+
 // UART Commands
 #define CMD_START         'S' // 0x53
 #define CMD_STOP          'P' // 0x50
@@ -39,13 +40,13 @@ SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
 #define REG_I2C_STATE      10 // default I2C_OK, See I2C Status
 
 // GPIO Configuration
-#define IO_INPUT          1
-#define IO_PUSH_PULL      2
-#define IO_OPEN_DRAIN     3
+#define IO_INPUT           1
+#define IO_PUSH_PULL       2
+#define IO_OPEN_DRAIN      3
 
 // I2C Clock Configuration
-#define I2C_CLK_375KHZ    0x05  // 0x05 mimimum value
-#define I2C_CLCK_99KHZ    0x13  // 19 in decimal, default
+#define I2C_CLK_375KHZ     0x05  // 0x05 mimimum value
+#define I2C_CLCK_99KHZ     0x13  // 19 in decimal, default
 
 // I2C Status
 #define SC_I2C_OK            0xF0
@@ -53,7 +54,7 @@ SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
 #define SC_I2C_NACK_ON_DATA  0xF2
 #define SC_I2C_TIME_OUT      0xF8
 
-#define BUF_SIZE         256
+#define BUF_SIZE          256
 
 uint8_t rx_buf[BUF_SIZE]{0};
 
@@ -102,9 +103,8 @@ int8_t gpio_read_all() {
 
   uint8_t cmd[] = { CMD_GPIO_READ, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
-  delay(100);
   
-  while (!uart.available()) {};
+  while (!uart.available());
   uart.read();
   return (uint8_t) uart.read();
 
@@ -241,7 +241,7 @@ void i2c_write(uint8_t address, uint8_t reg, bool send_stop) {
 // i2c write multiple operation
 void i2c_write_array(uint8_t address, uint8_t * data, uint8_t len, bool send_stop) {
 
-  const int asize = len + 5;
+  const int asize = len + 4;
   uint8_t cmd[asize]{0};
 
   cmd[0] = CMD_START;
@@ -249,18 +249,12 @@ void i2c_write_array(uint8_t address, uint8_t * data, uint8_t len, bool send_sto
   cmd[2] = len;
   memcpy(&cmd[3], data, len);
   if (send_stop) {
-    cmd[3+len] = CMD_STOP;
-    cmd[3+1+len] = '\n';
-    // rt_uart_write(uart, cmd, len+5, NULL);
-      uart.write(cmd, len+5);
+    cmd[len+3] = CMD_STOP;
+    uart.write(cmd, len+4);
   }
   else {
-    cmd[3+len] = '\n';
-    // rt_uart_write(uart, cmd, len+4, NULL);
-      uart.write(cmd, len+4);
+      uart.write(cmd, len+3);
   }
-
-  //free(cmd);
 
 }
 
@@ -271,7 +265,7 @@ void i2c_read(uint8_t address, uint8_t * buf, uint8_t len) {
   uint8_t cmd[] = { CMD_START, read, len, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
-  while (uart.available() < len) {yield();};
+  while (uart.available() < len) yield();
 
   memset(rx_buf, 0, BUF_SIZE);
   int i=0;
@@ -303,7 +297,7 @@ uint8_t i2c_status() {
   uint8_t cmd[] = { CMD_REG_READ, REG_I2C_STATE, CMD_STOP };
   uart.write(cmd, sizeof(cmd));
 
-  while (uart.available() < 1) {yield();};
+  while (uart.available() < 1) yield();
 
   return uart.read();
   

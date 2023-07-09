@@ -13,7 +13,11 @@
 #define MCP9808_CONNECTED  0
 #define OLED_CONNECTED     0
 
-#define READ_INTERVAL  5000
+#define READ_INTERVAL      5000
+
+#if USING_SC18IM704
+#define ONBOARD_I2C_LED    0x62
+#endif
 
 #if MCP9808_CONNECTED
 
@@ -76,8 +80,8 @@ void setup() {
 
 #if USING_SC18IM704
   // blinking SC18IM704 on-board i2c LEDs
-  uint8_t cmd[] = { 0xC4, 0x06, 0x11, 0x97, 0x80, 0x00, 0x00, 0xAA };
-  i2c_write_array(0x53, cmd, sizeof(cmd), true);
+  uint8_t cmd[] = { 0x11, 0x97, 0x80, 0x00, 0x00, 0xAA };
+  i2c_write_array(ONBOARD_I2C_LED, cmd, sizeof(cmd), true);
 #endif
  
   // gpio_config(15, IO_PUSH_PULL);        // set GPIO pin 0 as OUTPUT Push-Pull
