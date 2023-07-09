@@ -37,6 +37,8 @@ uint8_t init_config[OLED_INIT_LEN] = {
   0xAF        // Display on
 };
 
+static uint8_t scale = 1;
+
 
 // strentch a byte into a 16-bit word, based on 
 // Henry S. Warran Jr. Hacker's Delight (2rd edition) p. 139-141
@@ -50,6 +52,9 @@ uint16_t _stretch (uint8_t x) {
   
 }
 
+void set_font_size(uint8_t new_size) {
+  scale = new_size;
+}
 
 void init_display(uint8_t addr) {
 
@@ -64,11 +69,12 @@ void clear_display(uint8_t addr) {
   i2c_write_array(addr, params, sizeof(params)) ;
 
   // Write the data in 32 blocks of 16-byte as SSD1306 has an I2C buffer of 16-byte
-  uint8_t data[16];  
+  uint8_t data[17]; 
   for (int i = 0 ; i < 32; i++) {
-    i2c_write(addr, OLED_DATA_MODE);
-    memset(data, 0, 16);
-    i2c_write_array(addr, data, 16);
+    memset(data, 0, sizeof(data));
+    data[0] = OLED_DATA_MODE;
+    i2c_write_array(addr, data, sizeof(data));
+    delay(5);
   }
 }
 
@@ -85,23 +91,26 @@ void display_on_off(uint8_t addr, uint8_t display_state) {
 void print_char(uint8_t addr, uint8_t c, int line, int column) {
 
   uint8_t data[] = {
-    OLED_REG_SET_COL, column, column + (scale * 6) -1, 
+    OLED_COMMAND_MODE,
+    OLED_REG_SET_COL, column, column + (scale * 6), 
     OLED_REG_SET_PAGE, line, line + scale - 1
   };
-  i2c_write(addr, OLED_COMMAND_MODE);
   i2c_write_array(addr, data, sizeof(data));
   
   uint8_t col0 = fontTable[c - ' '][0];
   uint16_t col0L = _stretch(col0);
   uint16_t col0R = col0L;
-  for (uint8_t col=1; col<5; col++) {  // skipt col 0, leave it as blank
+
+  memset(data, 0, 7);
+  data[0] = OLED_DATA_MODE;
+  
+  for (uint8_t col=1; col<6; col++) {  // skipt col 0, leave it as blank
     uint8_t col1 = fontTable[c - ' '][col];
     uint16_t col1L = _stretch(col1);
     uint16_t col1R = col1L;
     
     if (scale == 1) {
-      uint8_t data[] = {OLED_DATA_MODE, col0};
-      i2c_write_array(addr, data, sizeof(data));
+      data[col] = col0;
     }
     else {
       // smooth a font
@@ -121,14 +130,7 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
     col0 = col1;
   }
   
-  if (scale == 1) {
-    uint8_t data[] = {OLED_DATA_MODE, col0};
-    i2c_write_array(addr, data, sizeof(data));
-  }
-  else {
-    uint8_t data[] = { OLED_DATA_MODE, col0L & 0xFF, col0L >> 8, col0R & 0xFF, col0R >> 8 };
-    i2c_write_array(addr, data, sizeof(data));
-  }
+  i2c_write_array(addr, data, sizeof(data));
 
 }
 
@@ -138,6 +140,7 @@ void print_str(uint8_t addr, const char* str, int line, int col) {
   for (uint8_t i=0; i<strlen(str); i++) {
     print_char(addr, str[i], line, col);
     col = col + scale * 6;
+    delay(10);
   }
 
 }

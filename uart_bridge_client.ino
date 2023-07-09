@@ -19,6 +19,12 @@
 #define ONBOARD_I2C_LED    0x62
 #endif
 
+#if OLED_CONNECTED
+// OLED 128x32 display module
+#include "tiny_oled_driver.h"
+#define OLED_I2C          0x3C
+#endif
+
 #if MCP9808_CONNECTED
 
 // MCP9808 Temperature Sensor
@@ -38,6 +44,12 @@ void print_mcp_device_info() {
   uint8_t dev_id[2]{0};
   i2c_read(MCP9808_ADDR, dev_id, 2);       // device_id should be 0x04rr rr as revision number
   Serial.printf("ManufactureID: %2x, DeviceID: %2X, Revision: %2X\n", id[1], dev_id[0], dev_id[1]);
+#if OLED_CONNECTED
+  char str[22] = {'\0'};
+  set_font_size(1);
+  sprintf(str, "ID:%x Dev:%d Rev:%d", id[1], dev_id[0], dev_id[1]);
+  print_str(OLED_I2C, str, 0, 0);   // display str at line 0 and col 0
+#endif
 }
 
 void print_mcp_temperature_reading() {
@@ -52,13 +64,13 @@ void print_mcp_temperature_reading() {
     temp = -( (~temp & 0xfff) + 1 );
   }
   Serial.printf("Temperature: %.1f C\n", temp / 16.0);
+#if OLED_CONNECTED
+  char str[22] = {'\0'};
+  memset(str, '\0', sizeof(str));
+  sprintf(str, "%.1f", temp/16.0);
+  print_str(OLED_I2C, str, 2, 60);  // display str at line 2 (row 2 x 8), col 0    
 }
 #endif
-
-#if OLED_CONNECTED
-// OLED 128x32 display module
-#include "tiny_oled_driver.h"
-#define OLED_ADDR      0x3C
 #endif
   
 void setup() {
@@ -70,22 +82,30 @@ void setup() {
   uart.begin(115200);       // SC18IM704 default at 9600, upon reset, it sends "OK"
 #endif
   delay(1000);
-  
   while(uart.available()) uart.read();
-  
-  Serial.println(read_chip_id());
   
   // I2C config
   i2c_set_clock(400000L);              // change i2c clock from default 100kHz to 400kHz
 
+#if OLED_CONNECTED & MCP9808_CONNECTED
+  init_display(OLED_I2C);
+  clear_display(OLED_I2C);
+  
+  print_mcp_device_info();
+
+  set_font_size(2);
+  char str[]="Temp= ";
+  print_str(OLED_I2C, str, 2, 0);
+#endif
+  
 #if USING_SC18IM704
   // blinking SC18IM704 on-board i2c LEDs which are connected to the GPIO Pin 5-8
   uint8_t data[] = { 0x11, 0x97, 0x80, 0x00, 0x00, 0xAA };
   i2c_write_array(ONBOARD_I2C_LED, data, sizeof(data));
 #endif
  
-  gpio_config(0, IO_PUSH_PULL);        // set only GPIO pin 0 as OUTPUT Push-Pull
-  // gpio_config_multiple(0x55AA);            // set GPIO pin 0-3 as OUPTUT Push_Pulll
+  // gpio_config(0, IO_PUSH_PULL);        // set only GPIO pin 0 as OUTPUT Push-Pull
+  gpio_config_multiple(0x55AA);            // set GPIO pin 0-3 as OUPTUT Push_Pulll
   
 }
 
@@ -100,8 +120,7 @@ void loop() {
   //i = (i + 1) % 4;   // rotating between LED 0 to 3
 
 #if MCP9808_CONNECTED
-  print_mcp_device_info();
   print_mcp_temperature_reading();
 #endif
-  
+
 }
