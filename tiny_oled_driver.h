@@ -88,12 +88,12 @@ void display_on_off(uint8_t addr, uint8_t display_state) {
 
 
 // Print a character; line = 0 to 3; column = 0 to 131
-void print_char(uint8_t addr, uint8_t c, int line, int column) {
+void print_char(uint8_t addr, uint8_t c, uint8_t line, uint8_t column) {
 
   uint8_t data[] = {
     OLED_COMMAND_MODE,
-    OLED_REG_SET_COL, column, column + (scale * 6), 
-    OLED_REG_SET_PAGE, line, line + scale - 1
+    OLED_REG_SET_COL, column, (uint8_t) (column + (scale * 6)), 
+    OLED_REG_SET_PAGE, line, (uint8_t) (line + scale - 1)
   };
   i2c_write_array(addr, data, sizeof(data));
   
@@ -122,7 +122,7 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
           }
         }
       }
-      uint8_t data[] = { OLED_DATA_MODE, col0L & 0xFF, col0L >> 8, col0R & 0xFF, col0R >> 8 };
+      uint8_t data[] = { OLED_DATA_MODE, (uint8_t) (col0L & 0xFF), (uint8_t) (col0L >> 8), (uint8_t) (col0R & 0xFF), (uint8_t) (col0R >> 8) };
       i2c_write_array(addr, data, sizeof(data));
       col0L = col1L; 
       col0R = col1R;
@@ -135,7 +135,7 @@ void print_char(uint8_t addr, uint8_t c, int line, int column) {
 }
 
 
-void print_str(uint8_t addr, const char* str, int line, int col) {
+void print_str(uint8_t addr, const char* str, uint8_t line, uint8_t col) {
 
   for (uint8_t i=0; i<strlen(str); i++) {
     print_char(addr, str[i], line, col);

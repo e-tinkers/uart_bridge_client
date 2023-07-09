@@ -9,7 +9,7 @@
 #include "sc18im704_driver.h"
 
 // Configuration
-#define USING_SC18IM704    0
+#define USING_SC18IM704    1
 #define MCP9808_CONNECTED  1
 #define OLED_CONNECTED     1
 
@@ -68,9 +68,9 @@ void print_mcp_temperature_reading() {
   char str[22] = {'\0'};
   memset(str, '\0', sizeof(str));
   sprintf(str, "%.1f", temp/16.0);
-  print_str(OLED_I2C, str, 2, 60);  // display str at line 2 (row 2 x 8), col 0    
-}
+  print_str(OLED_I2C, str, 2, 60);  // display str at line 2 (row 2 x 8), col 0
 #endif
+}
 #endif
   
 void setup() {
@@ -85,8 +85,10 @@ void setup() {
   while(uart.available()) uart.read();
   
   // I2C config
-  i2c_set_clock(400000L);              // change i2c clock from default 100kHz to 400kHz
+  // i2c_set_clock(400000L);              // change i2c clock from default 100kHz to 400kHz
 
+  delay(1000);
+  
 #if OLED_CONNECTED & MCP9808_CONNECTED
   init_display(OLED_I2C);
   clear_display(OLED_I2C);
@@ -117,7 +119,7 @@ void loop() {
   delay(1000);
   gpio_write(i, 1);  // LED i ON
   delay(1000);
-  //i = (i + 1) % 4;   // rotating between LED 0 to 3
+  i = (i + 1) % 4;   // rotating between LED 0 to 3
 
 #if MCP9808_CONNECTED
   print_mcp_temperature_reading();
