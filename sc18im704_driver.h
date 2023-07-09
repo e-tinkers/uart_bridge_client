@@ -53,7 +53,7 @@ SoftwareSerial uart(D6, D7);  // rx, tx D6 and D7 defined as in Wemos D1 Mini
 #define SC_I2C_NACK_ON_DATA  0xF2
 #define SC_I2C_TIME_OUT      0xF8
 
-#define BUF_SIZE         64
+#define BUF_SIZE         256
 
 uint8_t rx_buf[BUF_SIZE]{0};
 
@@ -66,13 +66,15 @@ int8_t gpio_config(uint8_t gpio_pin, uint8_t gpio_mode) {
   
   if ((gpio_pin > 7) || (gpio_mode > IO_OPEN_DRAIN)) return -1;
 
+  uint16_t gpio_conf{0};
+  
   //TO_DO: instead of using default hardcoded 0x5555, should use the last_config value
   uint16_t target_mode = gpio_mode << (gpio_pin * 2);
   uint16_t mask = ~(0x03 << (gpio_pin * 2));
   uint16_t bits_config = 0x5555 & mask;
-  uint16_t gpio_conf = bits_config | target_mode;
+  gpio_conf = bits_config | target_mode;
 
-   uint8_t cmd[] = {
+  uint8_t cmd[] = {
     CMD_REG_WRITE, REG_PORT_CONF1, (uint8_t) (gpio_conf & 0x00ff),
     REG_PORT_CONF2, (uint8_t) (gpio_conf >> 8), CMD_STOP
   };
@@ -82,6 +84,15 @@ int8_t gpio_config(uint8_t gpio_pin, uint8_t gpio_mode) {
   
 }
 
+int8_t gpio_config_multiple(uint16_t gpio_mode) {
+  uint8_t cmd[] = {
+    CMD_REG_WRITE, REG_PORT_CONF1, (uint8_t) (gpio_mode & 0x00ff),
+    REG_PORT_CONF2, (uint8_t) (gpio_mode >> 8), CMD_STOP
+  };
+  uart.write(cmd, sizeof(cmd));
+  
+  return true;
+}
 
 // GPIO Read All ('I' + 'P')
 // return states of all GPIO pins, -1=invalid pin
@@ -213,7 +224,7 @@ bool i2c_set_clock(uint32_t speed) {
 }
 
 // Send data over i2c
-void i2c_send(uint8_t address, uint8_t reg, bool send_stop) {
+void i2c_write(uint8_t address, uint8_t reg, bool send_stop) {
 
   uint8_t addr = (uint8_t) (address << 1);
   if (send_stop) {
@@ -227,9 +238,34 @@ void i2c_send(uint8_t address, uint8_t reg, bool send_stop) {
 
 }
 
+// i2c write multiple operation
+void i2c_write_array(uint8_t address, uint8_t * data, uint8_t len, bool send_stop) {
+
+  const int asize = len + 5;
+  uint8_t cmd[asize]{0};
+
+  cmd[0] = CMD_START;
+  cmd[1] = (uint8_t) (address << 1);
+  cmd[2] = len;
+  memcpy(&cmd[3], data, len);
+  if (send_stop) {
+    cmd[3+len] = CMD_STOP;
+    cmd[3+1+len] = '\n';
+    // rt_uart_write(uart, cmd, len+5, NULL);
+      uart.write(cmd, len+5);
+  }
+  else {
+    cmd[3+len] = '\n';
+    // rt_uart_write(uart, cmd, len+4, NULL);
+      uart.write(cmd, len+4);
+  }
+
+  //free(cmd);
+
+}
 
 // Receive data from i2c
-void i2c_receive(uint8_t address, uint8_t * buf, uint8_t len) {
+void i2c_read(uint8_t address, uint8_t * buf, uint8_t len) {
 
   uint8_t read = (uint8_t) ((address << 1) | 0x01);
   uint8_t cmd[] = { CMD_START, read, len, CMD_STOP };

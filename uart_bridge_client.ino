@@ -60,29 +60,40 @@ void print_mcp_temperature_reading() {
 void setup() {
 
   Serial.begin(115200);
-//#if defined(USING_SC18IM704)
+#if defined(USING_SC18IM704)
   uart.begin(9600);
-//#else
-//  uart.begin(115200);       // SC18IM704 default at 9600, upon reset, it sends "OK"
-//#endif
+#else
+  uart.begin(115200);       // SC18IM704 default at 9600, upon reset, it sends "OK"
+#endif
   delay(1000);
   
-  while(uart.available()) {uart.read();}
+  while(uart.available()) uart.read();
+  
   Serial.println(read_chip_id());
-
-  gpio_config(2, IO_PUSH_PULL);        // set GPIO pin 0 as OUTPUT Push-Pull
   
   // I2C config
-//  i2c_set_clock(100000L);              // change i2c clock from default 100kHz to 400kHz
+//  i2c_set_clock(400000L);              // change i2c clock from default 100kHz to 400kHz
 
+#if USING_SC18IM704
+  // blinking SC18IM704 on-board i2c LEDs
+  uint8_t cmd[] = { 0xC4, 0x06, 0x11, 0x97, 0x80, 0x00, 0x00, 0xAA };
+  i2c_write_array(0x53, cmd, sizeof(cmd), true);
+#endif
+ 
+  // gpio_config(15, IO_PUSH_PULL);        // set GPIO pin 0 as OUTPUT Push-Pull
+  gpio_config_multiple(0x55AA);            // set GPIO pin 0 - 3 as OUPTUT Push_Pulll
+  
 }
 
 void loop() {
 
-  gpio_write(2, 1);
+  static uint8_t i{0};
+  
+  gpio_write(i, 0);  // LED i OFF
   delay(500);
-  gpio_write(2, 0);
+  gpio_write(i, 1);  // LED i ON
   delay(500);
+  i = (i + 1) % 4;   // rotating between LED 0 to 3
 
 #if MCP9808_CONNECTED
     print_mcp_device_info();
